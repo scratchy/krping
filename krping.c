@@ -58,6 +58,29 @@
 #include "getopt.h"
 
 #define PFX "krping: "
+unsigned long get_seconds(void)
+{
+//      struct timekeeper *tk = &tk_core.timekeeper;
+
+//      return tk->xtime_sec;
+return 0;
+}
+
+static inline void *ib_dma_alloc_coherent(struct ib_device *dev,
+                                           size_t size,
+                                           dma_addr_t *dma_handle,
+                                           gfp_t flag)
+{
+        return dma_alloc_coherent(dev->dma_device, size, dma_handle, flag);
+}
+
+static inline void ib_dma_free_coherent(struct ib_device *dev,
+                                        size_t size, void *cpu_addr,
+                                        dma_addr_t dma_handle)
+{
+        dma_free_coherent(dev->dma_device, size, cpu_addr, dma_handle);
+}
+
 
 static int debug = 0;
 module_param(debug, int, 0);
@@ -2222,14 +2245,25 @@ static int krping_read_open(struct inode *inode, struct file *file)
         return single_open(file, krping_read_proc, inode->i_private);
 }
 
-static struct file_operations krping_ops = {
-	.owner = THIS_MODULE,
-	.open = krping_read_open,
-	.read = seq_read,
-	.llseek  = seq_lseek,
-	.release = single_release,
-	.write = krping_write_proc,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
+static struct proc_ops krping_ops = {
+	.proc_open     = krping_read_open,
+        .proc_read     = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release  = single_release,
+        .proc_write    = krping_write_proc,
 };
+#else
+
+static struct file_operations krping_ops = {
+        .owner = THIS_MODULE,
+        .open = krping_read_open,
+        .read = seq_read,
+        .llseek  = seq_lseek,
+        .release = single_release,
+        .write = krping_write_proc,
+};
+#endif
 
 static int __init krping_init(void)
 {
